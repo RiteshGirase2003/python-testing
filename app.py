@@ -1,58 +1,54 @@
 from flask import Flask, request, jsonify
-import re
-import dns.resolver
-import smtplib
+import hashlib
 
 app = Flask(__name__)
 
-# Basic regex email validation
-def is_valid_email(email):
-    pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
-    return re.match(pattern, email) is not None
-
-# Check if email domain has valid MX records
-def check_mx_records(domain):
+# Function to generate hash
+def generate_hash(algorithm, text):
     try:
-        mx_records = dns.resolver.resolve(domain, 'MX')
-        return len(mx_records) > 0
-    except:
-        return False
+        hash_obj = hashlib.new(algorithm)
+        hash_obj.update(text.encode('utf-8'))
+        return hash_obj.hexdigest()
+    except ValueError:
+        return None
 
-# Verify email by connecting to SMTP server
-def verify_email_smtp(email):
-    domain = email.split('@')[-1]
-    try:
-        server = smtplib.SMTP(f"mail.{domain}")
-        server.quit()
-        return True
-    except:
-        return False
+# Create POST endpoints for different hashing algorithms
+@app.route('/hash/md5', methods=['POST'])
+def hash_md5():
+    data = request.get_json()
+    message = data.get("message", "")
+    return jsonify({"algorithm": "md5", "hash": generate_hash("md5", message)})
 
-@app.route('/validate-email', methods=['GET'])
-def validate_email():
-    email = request.args.get('email')
-    if not email:
-        return jsonify({"error": "Email is required"}), 400
+@app.route('/hash/sha1', methods=['POST'])
+def hash_sha1():
+    data = request.get_json()
+    message = data.get("message", "")
+    return jsonify({"algorithm": "sha1", "hash": generate_hash("sha1", message)})
 
-    # Step 1: Check email format
-    is_valid = is_valid_email(email)
-    if not is_valid:
-        return jsonify({"email": email, "valid": False, "reason": "Invalid format"})
+@app.route('/hash/sha256', methods=['POST'])
+def hash_sha256():
+    data = request.get_json()
+    message = data.get("message", "")
+    return jsonify({"algorithm": "sha256", "hash": generate_hash("sha256", message)})
 
-    # Step 2: Check MX records
-    domain = email.split('@')[-1]
-    has_mx = check_mx_records(domain)
-    if not has_mx:
-        return jsonify({"email": email, "valid": False, "reason": "No mail servers found"})
+@app.route('/hash/sha512', methods=['POST'])
+def hash_sha512():
+    data = request.get_json()
+    message = data.get("message", "")
+    return jsonify({"algorithm": "sha512", "hash": generate_hash("sha512", message)})
 
-    # Step 3: Verify SMTP (optional, some servers may block it)
-    is_deliverable = verify_email_smtp(email)
+@app.route('/hash/blake2b', methods=['POST'])
+def hash_blake2b():
+    data = request.get_json()
+    message = data.get("message", "")
+    return jsonify({"algorithm": "blake2b", "hash": generate_hash("blake2b", message)})
 
-    return jsonify({
-        "email": email,
-        "valid": is_valid and has_mx and is_deliverable,
-        "reason": "Valid email" if is_valid and has_mx and is_deliverable else "Email may not be deliverable"
-    })
+@app.route('/hash/blake2s', methods=['POST'])
+def hash_blake2s():
+    data = request.get_json()
+    message = data.get("message", "")
+    return jsonify({"algorithm": "blake2s", "hash": generate_hash("blake2s", message)})
 
+# Run the Flask app
 if __name__ == '__main__':
     app.run(debug=True)

@@ -1,5 +1,8 @@
 fastapi
 uvicorn
-flask
 gunicorn
 requests
+Flask
+dnspython
+smtplib
+re
